@@ -219,8 +219,8 @@ final class JigglerController: ObservableObject {
     }
 
     private func performJiggle() {
+        self.lastJiggleTime = Date() // Set synchronously before async
         Task {
-            self.lastJiggleTime = Date()
             await self.mouseController.jiggle()
             self.lastJiggleCompletionTime = Date()
             self.lastMousePosition = self.getCurrentMousePosition()
