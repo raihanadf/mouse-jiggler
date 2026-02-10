@@ -18,9 +18,19 @@ let color = NSColor(red: r, green: g, blue: b, alpha: 1.0)
 let sizes = [16, 32, 64, 128, 256, 512]
 
 for size in sizes {
-    let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)!
-    let config = NSImage.SymbolConfiguration(pointSize: Double(size) * 0.5, weight: .medium)
-    let configuredImage = image.withSymbolConfiguration(config)!
+    guard let image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) else {
+        print("❌ Failed to load system symbol: \(iconName)")
+        exit(1)
+    }
+
+    let symbolSize = Double(size) * 0.5
+    let config = NSImage.SymbolConfiguration(pointSize: symbolSize, weight: .medium)
+        .applying(.init(paletteColors: [.white]))
+
+    guard let configuredImage = image.withSymbolConfiguration(config) else {
+        print("❌ Failed to apply symbol configuration")
+        exit(1)
+    }
 
     let rect = NSRect(x: 0, y: 0, width: size, height: size)
     let finalImage = NSImage(size: rect.size)
@@ -32,8 +42,7 @@ for size in sizes {
     let path = NSBezierPath(roundedRect: rect, xRadius: Double(size) * 0.22, yRadius: Double(size) * 0.22)
     path.fill()
 
-    // White symbol
-    NSColor.white.setFill()
+    // White symbol - centered
     let symbolRect = NSRect(
         x: (CGFloat(size) - configuredImage.size.width) / 2,
         y: (CGFloat(size) - configuredImage.size.height) / 2,
