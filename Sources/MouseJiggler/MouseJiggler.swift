@@ -13,10 +13,11 @@ struct MouseJigglerApp: App {
 }
 
 @MainActor
-class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
+class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, ObservableObject {
     var statusItem: NSStatusItem?
     var popover: NSPopover?
     var keyboardMonitor: Any?
+    var eventMonitor: Any?
 
     @Published var isJigglerActive = false
 
@@ -29,6 +30,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     private func setup() {
         self.setupMenuBar()
         self.setupKeyboardShortcut()
+        self.setupOutsideClickMonitor()
         self.setupIconChangeListener()
         NSApp.setActivationPolicy(.accessory)
     }
@@ -40,12 +42,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         guard let button = statusItem?.button else { return }
         button.action = #selector(self.togglePopover)
         button.target = self
-        button.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
         self.setupPopover()
     }
 
-    @objc private func updateMenuBarIcon() {
+    private func updateMenuBarIcon() {
         guard let button = statusItem?.button else { return }
         let style = Settings.shared.menuBarIconStyle
         button.image = NSImage(
@@ -58,22 +59,35 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         let popover = NSPopover()
         popover.contentSize = NSSize(width: 340, height: 420)
         popover.behavior = .transient
+        popover.animates = true
+        popover.delegate = self
         popover.contentViewController = NSHostingController(
             rootView: MenuBarView().environmentObject(self)
         )
         self.popover = popover
     }
 
+    private func setupOutsideClickMonitor() {
+        // Monitor for clicks outside the popover
+        self.eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
+            Task { @MainActor in
+                if let popover = self?.popover, popover.isShown {
+                    popover.performClose(nil)
+                }
+            }
+        }
+    }
+
     private func setupIconChangeListener() {
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(self.updateMenuBarIcon),
+            selector: #selector(self.handleIconChange),
             name: .menuBarIconChanged,
             object: nil
         )
     }
 
-    @objc private func updateMenuBarIconNotification() {
+    @objc private func handleIconChange() {
         self.updateMenuBarIcon()
     }
 
@@ -82,7 +96,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             if self.popover?.isShown == true {
                 self.popover?.performClose(nil)
             } else {
+                // Show popover and make sure it can become key
                 self.popover?.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+                self.popover?.contentViewController?.view.window?.makeKey()
             }
         }
     }
@@ -93,6 +109,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
     }
 
     func quitApp() {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
         NSApp.terminate(nil)
     }
 
@@ -110,6 +129,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
                 }
             }
         }
+    }
+
+    // MARK: - NSPopoverDelegate
+
+    func popoverShouldClose(_: NSPopover) -> Bool {
+        true
+    }
+
+    func popoverDidClose(_: Notification) {
+        // Popover closed
     }
 }
 
