@@ -1,5 +1,47 @@
 import Foundation
 
+/// Menu bar icon styles
+enum MenuBarIconStyle: String, CaseIterable, Identifiable {
+    case mouse
+    case cat
+    case dog
+    case ghost
+    case robot
+    case gamecontroller
+    case flame
+    case bolt
+
+    var id: String {
+        rawValue
+    }
+
+    var systemImage: String {
+        switch self {
+        case .mouse: "cursorarrow.click.2"
+        case .cat: "cat.fill"
+        case .dog: "dog.fill"
+        case .ghost: "eyes"
+        case .robot: "cpu.fill"
+        case .gamecontroller: "gamecontroller.fill"
+        case .flame: "flame.fill"
+        case .bolt: "bolt.fill"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .mouse: "Mouse"
+        case .cat: "Cat"
+        case .dog: "Dog"
+        case .ghost: "Ghost"
+        case .robot: "Robot"
+        case .gamecontroller: "Game"
+        case .flame: "Fire"
+        case .bolt: "Bolt"
+        }
+    }
+}
+
 /// App settings managed via UserDefaults
 @MainActor
 final class Settings: ObservableObject {
@@ -29,6 +71,13 @@ final class Settings: ObservableObject {
         didSet { self.defaults.set(self.enableKeyboardShortcut, forKey: Keys.enableKeyboardShortcut) }
     }
 
+    @Published var menuBarIconStyle: MenuBarIconStyle {
+        didSet {
+            self.defaults.set(self.menuBarIconStyle.rawValue, forKey: Keys.menuBarIconStyle)
+            NotificationCenter.default.post(name: .menuBarIconChanged, object: nil)
+        }
+    }
+
     // MARK: - UserDefaults Keys
 
     private enum Keys {
@@ -37,6 +86,7 @@ final class Settings: ObservableObject {
         static let launchAtLogin = "launchAtLogin"
         static let showNotifications = "showNotifications"
         static let enableKeyboardShortcut = "enableKeyboardShortcut"
+        static let menuBarIconStyle = "menuBarIconStyle"
     }
 
     // MARK: - Computed Properties
@@ -54,6 +104,7 @@ final class Settings: ObservableObject {
             Keys.launchAtLogin: false,
             Keys.showNotifications: true,
             Keys.enableKeyboardShortcut: true,
+            Keys.menuBarIconStyle: MenuBarIconStyle.mouse.rawValue,
         ]
         self.defaults.register(defaults: defaults)
 
@@ -62,6 +113,14 @@ final class Settings: ObservableObject {
         self.launchAtLogin = self.defaults.bool(forKey: Keys.launchAtLogin)
         self.showNotifications = self.defaults.bool(forKey: Keys.showNotifications)
         self.enableKeyboardShortcut = self.defaults.bool(forKey: Keys.enableKeyboardShortcut)
+
+        if let rawValue = self.defaults.string(forKey: Keys.menuBarIconStyle),
+           let style = MenuBarIconStyle(rawValue: rawValue)
+        {
+            self.menuBarIconStyle = style
+        } else {
+            self.menuBarIconStyle = .mouse
+        }
     }
 
     // MARK: - Reset
@@ -72,5 +131,12 @@ final class Settings: ObservableObject {
         self.launchAtLogin = false
         self.showNotifications = true
         self.enableKeyboardShortcut = true
+        self.menuBarIconStyle = .mouse
     }
+}
+
+// MARK: - Notifications
+
+extension Notification.Name {
+    static let menuBarIconChanged = Notification.Name("menuBarIconChanged")
 }
