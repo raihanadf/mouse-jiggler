@@ -1,169 +1,45 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let toggleJiggler = Notification.Name("toggleJiggler")
+}
+
 @main
-struct MouseJigglerApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+struct MouseMoverApp: App {
+    @StateObject private var jiggler = JigglerController.shared
 
     var body: some Scene {
-        WindowGroup {
-            EmptyView()
-                .hidden()
+        MenuBarExtra {
+            MenuBarContent()
+                .environmentObject(jiggler)
+        } label: {
+            let style = Settings.shared.menuBarIconStyle
+            Image(systemName: style.systemImage)
+                .symbolRenderingMode(.hierarchical)
         }
+        .menuBarExtraStyle(.window)
     }
 }
 
-@MainActor
-class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, ObservableObject {
-    var statusItem: NSStatusItem?
-    var popover: NSPopover?
-    var keyboardMonitor: Any?
-    var eventMonitor: Any?
-
-    @Published var isJigglerActive = false
-
-    nonisolated func applicationDidFinishLaunching(_: Notification) {
-        Task { @MainActor in
-            self.setup()
-        }
-    }
-
-    private func setup() {
-        self.setupMenuBar()
-        self.setupKeyboardShortcut()
-        self.setupOutsideClickMonitor()
-        self.setupIconChangeListener()
-        NSApp.setActivationPolicy(.accessory)
-    }
-
-    private func setupMenuBar() {
-        self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        self.updateMenuBarIcon()
-
-        guard let button = statusItem?.button else { return }
-        button.action = #selector(self.togglePopover)
-        button.target = self
-
-        self.setupPopover()
-    }
-
-    private func updateMenuBarIcon() {
-        guard let button = statusItem?.button else { return }
-        let style = Settings.shared.menuBarIconStyle
-        button.image = NSImage(
-            systemSymbolName: style.systemImage,
-            accessibilityDescription: "Mouse Mover"
-        )
-    }
-
-    private func setupPopover() {
-        let popover = NSPopover()
-        popover.contentSize = NSSize(width: 340, height: 420)
-        popover.behavior = .transient
-        popover.animates = true
-        popover.delegate = self
-        popover.contentViewController = NSHostingController(
-            rootView: MenuBarView().environmentObject(self)
-        )
-        self.popover = popover
-    }
-
-    private func setupOutsideClickMonitor() {
-        // Monitor for clicks outside the popover
-        self.eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            Task { @MainActor in
-                if let popover = self?.popover, popover.isShown {
-                    popover.performClose(nil)
-                }
-            }
-        }
-    }
-
-    private func setupIconChangeListener() {
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(self.handleIconChange),
-            name: .menuBarIconChanged,
-            object: nil
-        )
-    }
-
-    @objc private func handleIconChange() {
-        self.updateMenuBarIcon()
-    }
-
-    @objc private func togglePopover() {
-        if let button = statusItem?.button {
-            if self.popover?.isShown == true {
-                self.popover?.performClose(nil)
-            } else {
-                // Show popover and make sure it can become key
-                self.popover?.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-                self.popover?.contentViewController?.view.window?.makeKey()
-            }
-        }
-    }
-
-    @objc func toggleJiggler() {
-        self.isJigglerActive.toggle()
-        NotificationCenter.default.post(name: .toggleJiggler, object: self.isJigglerActive)
-    }
-
-    func quitApp() {
-        if let monitor = eventMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
-        NSApp.terminate(nil)
-    }
-
-    private func setupKeyboardShortcut() {
-        guard Settings.shared.enableKeyboardShortcut else { return }
-
-        let keyMask: NSEvent.ModifierFlags = [.control, .option]
-
-        self.keyboardMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            if event.keyCode == 38,
-               event.modifierFlags.contains(keyMask)
-            {
-                Task { @MainActor in
-                    self?.toggleJiggler()
-                }
-            }
-        }
-    }
-
-    // MARK: - NSPopoverDelegate
-
-    func popoverShouldClose(_: NSPopover) -> Bool {
-        true
-    }
-
-    func popoverDidClose(_: Notification) {
-        // Popover closed
-    }
-}
-
-// MARK: - Menu Bar View
-
-struct MenuBarView: View {
-    @EnvironmentObject var appDelegate: AppDelegate
+struct MenuBarContent: View {
+    @EnvironmentObject var jiggler: JigglerController
     @ObservedObject var settings = Settings.shared
-    @ObservedObject var jiggler = JigglerController.shared
 
     var body: some View {
         VStack(spacing: 0) {
             // Header with toggle
             HStack {
                 HStack(spacing: 8) {
-                    Image(systemName: self.settings.menuBarIconStyle.systemImage)
+                    Image(systemName: settings.menuBarIconStyle.systemImage)
                         .font(.system(size: 18))
-                        .foregroundColor(self.jiggler.isActive ? .green : .primary)
+                        .foregroundColor(jiggler.isActive ? .green : .primary)
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Mouse Mover")
                             .font(.system(size: 15, weight: .semibold))
-                        Text(self.jiggler.isActive ? "Active" : "Inactive")
+                        Text(jiggler.isActive ? "Active" : "Inactive")
                             .font(.system(size: 12))
-                            .foregroundColor(self.jiggler.isActive ? .green : .secondary)
+                            .foregroundColor(jiggler.isActive ? .green : .secondary)
                     }
                 }
 
@@ -179,8 +55,8 @@ struct MenuBarView: View {
                         .cornerRadius(4)
 
                     Toggle("", isOn: Binding(
-                        get: { self.jiggler.isActive },
-                        set: { _ in self.appDelegate.toggleJiggler() }
+                        get: { jiggler.isActive },
+                        set: { _ in jiggler.toggle() }
                     ))
                     .toggleStyle(SwitchToggleStyle(tint: .blue))
                     .labelsHidden()
@@ -207,7 +83,7 @@ struct MenuBarView: View {
                                     .font(.system(size: 14))
                                 Spacer()
                                 TimePicker(
-                                    value: self.$settings.idleThresholdMinutes,
+                                    value: $settings.idleThresholdMinutes,
                                     range: [10, 30, 60, 120, 300, 600],
                                     unit: "sec"
                                 )
@@ -218,7 +94,7 @@ struct MenuBarView: View {
                                     .font(.system(size: 14))
                                 Spacer()
                                 TimePicker(
-                                    value: self.$settings.moveIntervalSeconds,
+                                    value: $settings.moveIntervalSeconds,
                                     range: [5, 10, 30, 60],
                                     unit: "sec"
                                 )
@@ -238,14 +114,14 @@ struct MenuBarView: View {
                                 GridItem(.flexible()),
                                 GridItem(.flexible()),
                                 GridItem(.flexible()),
-                                GridItem(.flexible()),
+                                GridItem(.flexible())
                             ], spacing: 8) {
                                 ForEach(MenuBarIconStyle.allCases) { style in
                                     IconButton(
                                         style: style,
-                                        isSelected: self.settings.menuBarIconStyle == style
+                                        isSelected: settings.menuBarIconStyle == style
                                     ) {
-                                        self.settings.menuBarIconStyle = style
+                                        settings.menuBarIconStyle = style
                                     }
                                 }
                             }
@@ -255,9 +131,9 @@ struct MenuBarView: View {
                     // Options Section
                     Card {
                         VStack(spacing: 0) {
-                            ToggleRow(title: "Show Notifications", isOn: self.$settings.showNotifications)
+                            ToggleRow(title: "Show Notifications", isOn: $settings.showNotifications)
                             Divider().padding(.leading, 28)
-                            ToggleRow(title: "Launch at Login", isOn: self.$settings.launchAtLogin)
+                            ToggleRow(title: "Launch at Login", isOn: $settings.launchAtLogin)
                         }
                     }
 
@@ -272,12 +148,12 @@ struct MenuBarView: View {
                             HStack(spacing: 20) {
                                 StatItem(
                                     icon: "clock",
-                                    value: self.jiggler.formattedIdleTime,
+                                    value: jiggler.formattedIdleTime,
                                     label: "Idle Time"
                                 )
                                 StatItem(
                                     icon: "cursorarrow",
-                                    value: self.jiggler.formattedLastJiggleTime,
+                                    value: jiggler.formattedLastJiggleTime,
                                     label: "Last Move"
                                 )
                             }
@@ -287,17 +163,15 @@ struct MenuBarView: View {
                     Spacer(minLength: 6)
 
                     // Quit Button
-                    Button(action: {
-                        self.appDelegate.quitApp()
-                    }) {
-                        Text("Quit")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(Color.secondary.opacity(0.12))
-                            .cornerRadius(8)
+                    Button("Quit") {
+                        NSApplication.shared.terminate(nil)
                     }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.secondary.opacity(0.12))
+                    .cornerRadius(8)
                     .buttonStyle(.plain)
 
                     Text("Mouse Mover v1.0")
@@ -319,18 +193,18 @@ struct IconButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: self.action) {
+        Button(action: action) {
             VStack(spacing: 4) {
-                Image(systemName: self.style.systemImage)
+                Image(systemName: style.systemImage)
                     .font(.system(size: 20))
                     .frame(height: 24)
-                Text(self.style.displayName)
+                Text(style.displayName)
                     .font(.system(size: 10))
             }
-            .foregroundColor(self.isSelected ? .white : .primary)
+            .foregroundColor(isSelected ? .white : .primary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)
-            .background(self.isSelected ? Color.blue : Color.secondary.opacity(0.1))
+            .background(isSelected ? Color.blue : Color.secondary.opacity(0.1))
             .cornerRadius(8)
         }
         .buttonStyle(.plain)
@@ -346,14 +220,14 @@ struct TimePicker: View {
 
     var body: some View {
         Menu {
-            ForEach(self.range, id: \.self) { seconds in
-                Button(self.formatTime(seconds)) {
-                    self.value = Double(seconds) / 60.0
+            ForEach(range, id: \.self) { seconds in
+                Button(formatTime(seconds)) {
+                    value = Double(seconds) / 60.0
                 }
             }
         } label: {
             HStack(spacing: 4) {
-                Text(self.formatTime(Int(self.value * 60)))
+                Text(formatTime(Int(value * 60)))
                     .font(.system(size: 13, weight: .medium))
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 9))
@@ -378,10 +252,14 @@ struct TimePicker: View {
 // MARK: - Card Component
 
 struct Card<Content: View>: View {
-    @ViewBuilder let content: Content
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
 
     var body: some View {
-        self.content
+        content
             .padding(12)
             .background(Color.secondary.opacity(0.08))
             .cornerRadius(10)
@@ -396,10 +274,10 @@ struct ToggleRow: View {
 
     var body: some View {
         HStack {
-            Text(self.title)
+            Text(title)
                 .font(.system(size: 14))
             Spacer()
-            Toggle("", isOn: self.$isOn)
+            Toggle("", isOn: $isOn)
                 .toggleStyle(SwitchToggleStyle(tint: .blue))
                 .labelsHidden()
                 .scaleEffect(0.85)
@@ -417,22 +295,16 @@ struct StatItem: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: self.icon)
+            Image(systemName: icon)
                 .font(.system(size: 12))
                 .foregroundColor(.secondary)
             VStack(alignment: .leading, spacing: 1) {
-                Text(self.value)
+                Text(value)
                     .font(.system(size: 13, weight: .medium))
-                Text(self.label)
+                Text(label)
                     .font(.system(size: 10))
                     .foregroundColor(.secondary)
             }
         }
     }
-}
-
-// MARK: - Notifications
-
-extension Notification.Name {
-    static let toggleJiggler = Notification.Name("toggleJiggler")
 }
