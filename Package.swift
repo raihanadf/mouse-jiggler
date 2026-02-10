@@ -2,22 +2,22 @@
 import PackageDescription
 
 let package = Package(
-    name: "MouseJiggler",
+    name: "MouseMover",
     platforms: [
         .macOS(.v13),
     ],
     dependencies: [],
     targets: [
         .executableTarget(
-            name: "MouseJiggler",
+            name: "MouseMover",
             dependencies: [],
             swiftSettings: [
                 .enableExperimentalFeature("StrictConcurrency"),
             ]
         ),
         .testTarget(
-            name: "MouseJigglerTests",
-            dependencies: ["MouseJiggler"]
+            name: "MouseMoverTests",
+            dependencies: ["MouseMover"]
         ),
     ]
 )

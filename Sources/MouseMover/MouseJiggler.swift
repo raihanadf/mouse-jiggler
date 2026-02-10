@@ -51,7 +51,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, Observabl
         let style = Settings.shared.menuBarIconStyle
         button.image = NSImage(
             systemSymbolName: style.systemImage,
-            accessibilityDescription: "Mouse Jiggler"
+            accessibilityDescription: "Mouse Mover"
         )
     }
 
@@ -159,7 +159,7 @@ struct MenuBarView: View {
                         .foregroundColor(self.jiggler.isActive ? .green : .primary)
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Mouse Jiggler")
+                        Text("Mouse Mover")
                             .font(.system(size: 15, weight: .semibold))
                         Text(self.jiggler.isActive ? "Active" : "Inactive")
                             .font(.system(size: 12))
@@ -300,7 +300,7 @@ struct MenuBarView: View {
                     }
                     .buttonStyle(.plain)
 
-                    Text("Mouse Jiggler v1.0")
+                    Text("Mouse Mover v1.0")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }

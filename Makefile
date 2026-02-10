@@ -19,13 +19,13 @@ lint:
 # Clean build artifacts
 clean:
 	rm -rf .build
-	rm -rf MouseJiggler.app/Contents/MacOS/MouseJiggler
+	rm -rf MouseMover.app/Contents/MacOS/MouseMover
 
 # Build release version
 release:
 	swift build -c release
-	mkdir -p MouseJiggler.app/Contents/MacOS
-	cp .build/release/MouseJiggler MouseJiggler.app/Contents/MacOS/
+	mkdir -p MouseMover.app/Contents/MacOS
+	cp .build/release/MouseMover MouseMover.app/Contents/MacOS/
 
 # Install git hooks
 install-hooks:

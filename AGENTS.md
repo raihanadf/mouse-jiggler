@@ -23,7 +23,7 @@ swiftformat --lint Sources/MouseJiggler/SomeFile.swift  # Check single file
 
 **Pre-commit hook is installed** - Swift files are auto-formatted on every commit.
 
-## Mouse Jiggler Project Phases
+## Mouse Mover Project Phases
 
 | Issue | Phase | Status |
 |-------|-------|--------|

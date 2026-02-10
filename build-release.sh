@@ -1,14 +1,16 @@
 #!/bin/bash
+# Build Mouse Mover for release
+
 set -e
 
-echo "🔨 Building Mouse Mover..."
+echo "🔨 Building Mouse Mover Release..."
 
-# Clean previous build
+# Clean
 rm -rf .build/release
 rm -rf MouseMover.app
 
-# Build release version
-echo "📦 Building release binary..."
+# Build release
+echo "📦 Building..."
 swift build -c release
 
 # Create app bundle
@@ -18,11 +20,6 @@ mkdir -p MouseMover.app/Contents/Resources
 
 # Copy binary
 cp .build/release/MouseMover MouseMover.app/Contents/MacOS/
-
-# Copy icon if exists
-if [ -f "Assets/icon.icns" ]; then
-    cp Assets/icon.icns MouseMover.app/Contents/Resources/
-fi
 
 # Create Info.plist
 cat > MouseMover.app/Contents/Info.plist << 'EOF'
@@ -35,7 +32,7 @@ cat > MouseMover.app/Contents/Info.plist << 'EOF'
     <key>CFBundleExecutable</key>
     <string>MouseMover</string>
     <key>CFBundleIdentifier</key>
-    <string>com.raihan.MouseMover</string>
+    <string>com.raihan.mousemover</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
     <key>CFBundleName</key>
@@ -50,21 +47,35 @@ cat > MouseMover.app/Contents/Info.plist << 'EOF'
     <string>13.0</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-    <key>NSUserNotificationAlertStyle</key>
-    <string>alert</string>
     <key>LSUIElement</key>
-    <false/>
+    <true/>
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
 </dict>
 </plist>
 EOF
 
-# Sign the app (ad-hoc signing for local use)
-echo "🔏 Signing app..."
-codesign --force --deep --sign - MouseMover.app
+# Try to create icon
+echo "🎨 Creating icon..."
+if [ -f "create-icon.sh" ]; then
+    ./create-icon.sh 2>/dev/null || echo "⚠️  Icon generation failed, using default"
+fi
 
+# Copy icon if exists
+if [ -f "Assets/AppIcon.icns" ]; then
+    cp Assets/AppIcon.icns MouseMover.app/Contents/Resources/
+elif [ -f "Assets/AppIcon.png" ]; then
+    cp Assets/AppIcon.png MouseMover.app/Contents/Resources/
+fi
+
+# Sign the app
+echo "🔏 Signing..."
+codesign --force --deep --sign - MouseMover.app 2>/dev/null || true
+
+echo ""
 echo "✅ Build complete!"
 echo ""
-echo "App location: $(pwd)/MouseMover.app"
+echo "📍 Location: $(pwd)/MouseMover.app"
 echo ""
 echo "To install:"
 echo "  cp -r MouseMover.app /Applications/"

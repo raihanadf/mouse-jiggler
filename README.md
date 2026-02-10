@@ -1,4 +1,4 @@
-# Mouse Jiggler
+# Mouse Mover
 
 A tiny Mac menu bar app that moves your cursor when you're AFK. Keeps your computer awake during long downloads, presentations, or when you just don't want it to sleep.
 

@@ -107,7 +107,7 @@ final class JigglerController: ObservableObject {
         self.startTimer()
 
         if self.settings.showNotifications {
-            self.showNotification(title: "Mouse Jiggler", message: "Started")
+            self.showNotification(title: "Mouse Mover", message: "Started")
         }
         print("[Jiggler] Started")
     }
@@ -118,7 +118,7 @@ final class JigglerController: ObservableObject {
         self.stopTimer()
 
         if self.settings.showNotifications {
-            self.showNotification(title: "Mouse Jiggler", message: "Stopped")
+            self.showNotification(title: "Mouse Mover", message: "Stopped")
         }
         print("[Jiggler] Stopped")
     }
@@ -163,7 +163,7 @@ final class JigglerController: ObservableObject {
                 print("[Jiggler] Idle threshold reached, starting movement")
                 self.state = .jiggling
                 if self.settings.showNotifications {
-                    self.showNotification(title: "Mouse Jiggler", message: "Moving cursor - you were idle")
+                    self.showNotification(title: "Mouse Mover", message: "Moving cursor - you were idle")
                 }
                 self.performJiggle()
             }
@@ -174,7 +174,7 @@ final class JigglerController: ObservableObject {
                 self.state = .monitoring
                 self.timeMouseHasBeenStill = self.idleTime
                 if self.settings.showNotifications {
-                    self.showNotification(title: "Mouse Jiggler", message: "Paused - user active")
+                    self.showNotification(title: "Mouse Mover", message: "Paused - user active")
                 }
             } else {
                 let timeSinceLastJiggle = Date().timeIntervalSince(self.lastJiggleTime ?? .distantPast)

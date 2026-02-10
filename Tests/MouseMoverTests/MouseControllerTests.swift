@@ -1,6 +1,6 @@
 import CoreGraphics
 import XCTest
-@testable import MouseJiggler
+@testable import MouseMover
 
 /// Tests for MouseController
 final class MouseControllerTests: XCTestCase {

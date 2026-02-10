@@ -1,5 +1,5 @@
 import XCTest
-@testable import MouseJiggler
+@testable import MouseMover
 
 /// Tests for IdleMonitor idle detection accuracy
 final class IdleMonitorTests: XCTestCase {
